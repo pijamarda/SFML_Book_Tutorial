@@ -4,6 +4,61 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <memory>
+
+//Creamos el enum para referirnos de este modo Textures::ID, para que no haya colision de nombres
+namespace Textures
+{
+	enum ID {Landscape, Airplane, Missile};
+}
+
+//Es un contenedor generico de texturas
+class TextureHolder
+{
+	//Constructor
+	private:
+		//el identificador sera el enum ID, y en el otro miembro de map almacenamos el puntero a la textura
+		std::map<Textures::ID, std::unique_ptr<sf::Texture>> mTextureMap;
+
+	//Metodos
+	public:
+		//para cargar la textura desde un fichero del sistema
+		void load(Textures::ID id, const std::string& filename);
+		//para que nos de la textura solicitada
+		sf::Texture& get(Textures::ID id);
+		//en el caso de que se referencie a una const TextureHolder
+		const sf::Texture& get(Textures::ID id) const;
+};
+
+void TextureHolder::load(Textures::ID id, const std::string& filename)
+{
+	//primero creamos un objeto del tipo sf::Texture y lo almacenamos un un unique pointer
+	std::unique_ptr<sf::Texture> texture(new sf::Texture());
+	//cargamos la textura desde el fichero
+	if (!texture->loadFromFile(filename))
+	{
+		std::cout << "error cargando fichero" << std::endl;		
+	}
+	//Insertamos la textura en el map que hemos definido en la clase
+	mTextureMap.insert(std::make_pair(id, std::move(texture)));
+}
+
+sf::Texture& TextureHolder::get(Textures::ID id)
+{
+	//hacemos una busqueda en el map por el id para encontrar la correspodiente textura
+	//auto utiliza "type inference" que es nuevo en c++11, y que hace que infiera el tipo de found segun la operacion
+	auto found = mTextureMap.find(id);
+	//accedemos al segundo miembro que es el que tiene el unique_pointer de la textura, y deferenciamos para obtener la textura
+	return *found->second;
+}
+
+const sf::Texture& TextureHolder::get(Textures::ID id) const
+{
+	//hacemos una busqueda en el map por el id para encontrar la correspodiente textura
+	auto found = mTextureMap.find(id);
+	//accedemos al segundo miembro que es el que tiene el unique_pointer de la textura, y deferenciamos para obtener la textura
+	return *found->second;
+}
 
 class Game
 {	
@@ -32,11 +87,9 @@ Game::Game() : mWindow(sf::VideoMode(640, 480), "SFML Application"), mPlayer(), 
 			   mIsMovingDown(false), mIsMovingUp(false), 
 			   mIsMovingLeft(false), mIsMovingRight(false)
 {
-	if (!mTexture.loadFromFile("media/textures/mother.bmp"))
-	{
-		// Handle loading error
-	}
-	mPlayer.setTexture(mTexture);
+	TextureHolder texture;
+	texture.load(Textures::Airplane, "media/textures/mother.bmp");	
+	mPlayer.setTexture(texture.get(Textures::Airplane));
 	mPlayer.setPosition(100.f, 100.f);
 	
 	if (!font.loadFromFile("media/fonts/consola.ttf"))
